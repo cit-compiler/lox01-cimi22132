@@ -135,6 +135,12 @@ private void number() {
   private void string() {
     while (peek() != '"' && !isAtEnd()) {
       if (peek() == '\n') line++;
+
+      if(peek() == '\\' && peekNext() =='"'){
+        advance();
+        advance();
+        continue;
+      }
       advance();
     }
 
