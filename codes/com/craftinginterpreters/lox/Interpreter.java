@@ -1,25 +1,20 @@
 package com.craftinginterpreters.lox;
 
-import static com.craftinginterpreters.lox.TokenType.BANG;
-import static com.craftinginterpreters.lox.TokenType.GREATER;
-import static com.craftinginterpreters.lox.TokenType.GREATER_EQUAL;
-import static com.craftinginterpreters.lox.TokenType.LESS;
-import static com.craftinginterpreters.lox.TokenType.LESS_EQUAL;
-import static com.craftinginterpreters.lox.TokenType.MINUS;
-import static com.craftinginterpreters.lox.TokenType.PLUS;
-import static com.craftinginterpreters.lox.TokenType.SLASH;
-import static com.craftinginterpreters.lox.TokenType.STAR;
+import java.util.List;
 
-class Interpreter implements Expr.Visitor<Object> {
+/*class Interpreter implements Expr.Visitor<Object> {*/
 
-    void interpret(Expr expression) { 
-        try {
-          Object value = evaluate(expression);
-          System.out.println(stringify(value));
-        } catch (RuntimeError error) {
-          Lox.runtimeError(error);
-        }
+class Interpreter implements Expr.Visitor<Object>,
+                             Stmt.Visitor<Void> {
+  void interpret(List<Stmt> statements) {
+    try {
+      for (Stmt statement : statements) {
+        execute(statement);
+      }
+    } catch (RuntimeError error) {
+      Lox.runtimeError(error);
     }
+  }
 
   @Override
   public Object visitLiteralExpr(Expr.Literal expr) {
@@ -29,13 +24,11 @@ class Interpreter implements Expr.Visitor<Object> {
   @Override
   public Object visitUnaryExpr(Expr.Unary expr) {
     Object right = evaluate(expr.right);
-    
 
     switch (expr.operator.type) {
       case BANG:
         return !isTruthy(right);
       case MINUS:
-        checkNumberOperand(expr.operator, right);
         return -(double)right;
     }
 
@@ -82,24 +75,36 @@ class Interpreter implements Expr.Visitor<Object> {
     return object.toString();
   }
 
-
   @Override
   public Object visitGroupingExpr(Expr.Grouping expr) {
     return evaluate(expr.expression);
   }
-
-  
 
   private Object evaluate(Expr expr) {
     return expr.accept(this);
   }
 
   @Override
+  public Void visitExpressionStmt(Stmt.Expression stmt) {
+    evaluate(stmt.expression);
+    return null;
+  }
+
+  @Override
+  public Void visitPrintStmt(Stmt.Print stmt) {
+    Object value = evaluate(stmt.expression);
+    System.out.println(stringify(value));
+    return null;
+  }
+
+  private void execute(Stmt stmt) {
+    stmt.accept(this);
+  }
+
+  @Override
   public Object visitBinaryExpr(Expr.Binary expr) {
     Object left = evaluate(expr.left);
     Object right = evaluate(expr.right); 
-    case BANG_EQUAL: return !isEqual(left, right);
-    case EQUAL_EQUAL: return isEqual(left, right);
 
     switch (expr.operator.type) {
       case GREATER:
@@ -115,9 +120,9 @@ class Interpreter implements Expr.Visitor<Object> {
         checkNumberOperands(expr.operator, left, right);
         return (double)left <= (double)right;
       case MINUS:
-        checkNumberOperands(expr.operator, left, right);
+        checkNumberOperand(expr.operator, right);
         return (double)left - (double)right;
-       case PLUS:
+      case PLUS:
         if (left instanceof Double && right instanceof Double) {
           return (double)left + (double)right;
         } 
@@ -125,6 +130,7 @@ class Interpreter implements Expr.Visitor<Object> {
         if (left instanceof String && right instanceof String) {
           return (String)left + (String)right;
         }
+
         throw new RuntimeError(expr.operator,
             "Operands must be two numbers or two strings.");
       case SLASH:
@@ -133,11 +139,13 @@ class Interpreter implements Expr.Visitor<Object> {
       case STAR:
         checkNumberOperands(expr.operator, left, right);
         return (double)left * (double)right;
+
+      case BANG_EQUAL: return !isEqual(left, right);
+      case EQUAL_EQUAL: return isEqual(left, right);
     }
 
     // Unreachable.
     return null;
   }
-
 
 }
